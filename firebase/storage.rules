@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isActiveStaff() {
+      return isAuth()
+        && userDoc().active == true
+        && userDoc().role in ['superadmin', 'admin', 'editor', 'viewer'];
+    }
+
+    function isAdmin() {
+      return isActiveStaff()
+        && userDoc().role in ['superadmin', 'admin', 'editor'];
+    }
+
+    function isManager() {
+      return isActiveStaff()
+        && userDoc().role in ['superadmin', 'admin'];
+    }
+
+    function isValidImageOrDoc() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches(
+          'image/(jpeg|jpg|png|webp|gif)|application/pdf'
+        );
+    }
+
+    // Médias publiés (lecture publique, écriture staff contenu)
+    match /media/public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidImageOrDoc();
+    }
+
+    // Brouillons / uploads admin non publiés
+    match /media/draft/{allPaths=**} {
+      allow read: if isActiveStaff();
+      allow write: if isAdmin() && isValidImageOrDoc();
+    }
+
+    // Preuves de paiement préinscription — authentification requise
+    match /registrations/{registrationId}/proofs/{fileName} {
+      allow read: if isManager() || isAuth();
+      allow create, update: if isAuth() && isValidImageOrDoc();
+      allow delete: if isManager();
+    }
+
+    // Refus explicite du reste
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

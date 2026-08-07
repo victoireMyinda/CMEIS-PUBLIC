@@ -1,0 +1,202 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ───────────────────────────────────────────────
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function userDocPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function userData() {
+      return isAuth() && exists(userDocPath())
+        ? get(userDocPath()).data
+        : null;
+    }
+
+    function isActiveStaff() {
+      return isAuth()
+        && userData() != null
+        && userData().active == true
+        && userData().role in ['superadmin', 'admin', 'editor', 'viewer'];
+    }
+
+    // Back-office content: admin, superadmin, editor
+    function isAdmin() {
+      return isActiveStaff()
+        && userData().role in ['superadmin', 'admin', 'editor'];
+    }
+
+    // Registrations, contacts, users (non-content): admin, superadmin
+    function isManager() {
+      return isActiveStaff()
+        && userData().role in ['superadmin', 'admin'];
+    }
+
+    function isSuperAdmin() {
+      return isActiveStaff()
+        && userData().role == 'superadmin';
+    }
+
+    function isViewer() {
+      return isActiveStaff()
+        && userData().role == 'viewer';
+    }
+
+    function canReadAdminData() {
+      return isAdmin() || isViewer();
+    }
+
+    function isPublishedResource() {
+      return resource.data.status == 'published';
+    }
+
+    // ─── users ─────────────────────────────────────────────────
+
+    match /users/{uid} {
+      allow read: if isAuth() && (request.auth.uid == uid || isManager());
+      allow create: if isManager()
+        && request.resource.data.uid == uid
+        && request.resource.data.active is bool
+        && request.resource.data.role in ['superadmin', 'admin', 'editor', 'viewer']
+        && (request.resource.data.role != 'superadmin' || isSuperAdmin());
+      allow update: if isManager()
+        && (uid != request.auth.uid || request.resource.data.role == resource.data.role)
+        && (request.resource.data.role != 'superadmin' || isSuperAdmin())
+        && (resource.data.role != 'superadmin' || isSuperAdmin());
+      allow delete: if isSuperAdmin() && uid != request.auth.uid;
+    }
+
+    // ─── roles ─────────────────────────────────────────────────
+
+    match /roles/{roleId} {
+      allow read: if isActiveStaff();
+      allow write: if isSuperAdmin();
+    }
+
+    // ─── settings ──────────────────────────────────────────────
+
+    match /settings/{docId} {
+      allow read: if docId == 'global';
+      allow write: if isSuperAdmin();
+    }
+
+    // ─── Published content collections ─────────────────────────
+
+    match /pages/{docId} {
+      allow read: if isPublishedResource() || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /news/{docId} {
+      allow read: if isPublishedResource() || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /galleries/{docId} {
+      allow read: if isPublishedResource() || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /documents/{docId} {
+      allow read: if isPublishedResource() || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /programs/{docId} {
+      allow read: if isPublishedResource() || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /partners/{docId} {
+      allow read: if isPublishedResource() || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /admissions/{docId} {
+      allow read: if isPublishedResource() || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── Public submissions ────────────────────────────────────
+
+    function validRegistrationCreate() {
+      let d = request.resource.data;
+      return d.keys().hasAll([
+          'nom', 'postnom', 'prenom', 'sexe', 'dateNaissance',
+          'province', 'telephone', 'email', 'filiereId', 'filiereLabel',
+          'niveauEtudes', 'ecoleProvenance', 'anneeAcademique',
+          'status', 'source', 'createdAt', 'updatedAt'
+        ])
+        && d.status == 'pending'
+        && d.source in ['web', 'mobile']
+        && d.sexe in ['M', 'F']
+        && d.nom is string && d.nom.size() > 0 && d.nom.size() <= 120
+        && d.email is string && d.email.size() > 3 && d.email.size() <= 254
+        && d.telephone is string && d.telephone.size() >= 8 && d.telephone.size() <= 20;
+    }
+
+    match /registrations/{docId} {
+      allow create: if validRegistrationCreate();
+      allow read, update, delete: if isManager();
+    }
+
+    function validContactCreate() {
+      let d = request.resource.data;
+      return d.keys().hasAll([
+          'name', 'email', 'subject', 'message', 'scope', 'status', 'createdAt', 'updatedAt'
+        ])
+        && d.status == 'new'
+        && d.scope in ['cmeis', 'isssi', 'both']
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 200
+        && d.email is string && d.email.size() > 3 && d.email.size() <= 254
+        && d.message is string && d.message.size() > 0 && d.message.size() <= 5000;
+    }
+
+    match /contacts/{docId} {
+      allow create: if validContactCreate();
+      allow read, update, delete: if isManager();
+    }
+
+    function validNewsletterCreate() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['email', 'scope', 'active', 'createdAt', 'updatedAt'])
+        && d.active == true
+        && d.scope in ['cmeis', 'isssi', 'both']
+        && d.email is string && d.email.size() > 3 && d.email.size() <= 254;
+    }
+
+    match /newsletter/{docId} {
+      allow create: if validNewsletterCreate();
+      allow read, update, delete: if isManager();
+    }
+
+    function validPaymentProofCreate() {
+      let d = request.resource.data;
+      return isAuth()
+        && d.keys().hasAll([
+          'registrationId', 'amount', 'currency', 'proofUrl', 'status', 'createdAt', 'updatedAt'
+        ])
+        && d.status == 'pending'
+        && d.amount is number && d.amount > 0
+        && d.currency is string && d.currency.size() >= 3 && d.currency.size() <= 4
+        && d.proofUrl is string && d.proofUrl.size() > 0;
+    }
+
+    match /paymentProofs/{docId} {
+      allow create: if validPaymentProofCreate();
+      allow read, update, delete: if isManager();
+    }
+
+    // ─── Default deny ──────────────────────────────────────────
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
