@@ -23,6 +23,10 @@ export interface PageContent extends BaseDoc {
   /** Si false, la rubrique est masquée sur le site public */
   enabled?: boolean
   author?: string
+  /** Présentation ISSSI — sections structurées (admin → site) */
+  sectionOffers?: string
+  sectionAxes?: string
+  sectionAcademicLife?: string
 }
 
 export interface HomepageBlock {
@@ -200,12 +204,15 @@ export interface PaymentInfo extends BaseDoc {
   portal?: 'isssi'
   title: string
   intro?: string
-  feesOverview: string
+  /** @deprecated remplacé par registrationFee + annualFee */
+  feesOverview?: string
+  registrationFee?: string
+  annualFee?: string
   bankName?: string
   bankAccountName?: string
   bankAccountNumber?: string
   bankSwift?: string
   mobileMoney: { label: string; number: string }[]
-  instructions: string
+  instructions?: string
   status: ContentStatus
 }

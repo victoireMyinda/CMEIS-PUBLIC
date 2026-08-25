@@ -35,7 +35,7 @@ import { useSite } from '@/app/SiteProvider'
 import { cn } from '@/utils/cn'
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 22 },
+  hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0 },
 }
 
@@ -99,8 +99,8 @@ function Reveal({
       variants={fadeUp}
       initial={reduceMotion ? false : 'hidden'}
       whileInView="show"
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay }}
+      viewport={{ once: true, amount: 0.08, margin: '0px 0px -40px 0px' }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay }}
     >
       {children}
     </motion.div>
@@ -137,7 +137,7 @@ export function HomePage() {
       setHome(h)
       setPrograms(p.slice(0, 4))
       setPartners(pt.slice(0, 8))
-      setDocuments(d.slice(0, 3))
+      setDocuments(d.slice(0, 6))
     })
     return () => {
       unsubNews()
@@ -502,17 +502,19 @@ export function HomePage() {
         </Reveal>
       </section>
 
-      {/* Valeurs */}
-      <section className="overflow-hidden border-y border-line bg-brand-800 py-7">
-        <div className="flex animate-[marquee_38s_linear_infinite] gap-3 whitespace-nowrap px-4">
-          {[...institutional.valeurs, ...institutional.valeurs].map((v, i) => (
-            <span
-              key={`${v}-${i}`}
-              className="inline-flex items-center rounded-full border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-white"
-            >
-              {v}
-            </span>
-          ))}
+      {/* Valeurs — grille, sans scroll horizontal */}
+      <section className="border-y border-line bg-brand-800 py-8 sm:py-10">
+        <div className="container-app">
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+            {institutional.valeurs.map((v) => (
+              <span
+                key={v}
+                className="inline-flex items-center rounded-full border border-white/10 bg-white/8 px-3.5 py-2 text-sm font-semibold text-white sm:px-4"
+              >
+                {v}
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -546,13 +548,15 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Documents + partenaires */}
-      <section className="bg-white py-14 sm:py-16">
-        <div className="container-app grid gap-10 lg:grid-cols-2">
+      {/* Documents */}
+      <section className="bg-white py-12 sm:py-16">
+        <div className="container-app">
           <Reveal>
             <SectionEyebrow>Documents</SectionEyebrow>
-            <h2 className="font-display text-3xl font-semibold text-ink">Ressources utiles</h2>
-            <div className="mt-6 space-y-3">
+            <h2 className="font-display text-2xl font-semibold text-ink sm:text-3xl">
+              Ressources utiles
+            </h2>
+            <div className="mt-5 grid gap-2.5 sm:mt-6 sm:gap-3">
               {documents.length > 0 ? (
                 documents.map((doc) => (
                   <a
@@ -560,16 +564,20 @@ export function HomePage() {
                     href={doc.fileUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="group flex items-center gap-4 rounded-2xl border border-line bg-surface/50 p-4 transition hover:border-brand-300 hover:bg-white hover:shadow-soft"
+                    className="group flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-surface/50 px-3 py-3.5 transition hover:border-brand-300 hover:bg-white hover:shadow-soft sm:gap-4 sm:p-4"
                   >
-                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand-800 text-accent-400">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-800 text-accent-400 sm:h-11 sm:w-11">
                       <FileText className="h-5 w-5" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate font-semibold text-ink">{doc.title}</h3>
-                      <p className="text-sm text-muted">{doc.category || 'Document'}</p>
+                      <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-ink sm:truncate sm:text-base">
+                        {doc.title}
+                      </h3>
+                      <p className="mt-0.5 text-xs text-muted sm:text-sm">
+                        {doc.category || 'Document'}
+                      </p>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-brand-600 opacity-0 transition group-hover:opacity-100" />
+                    <ArrowRight className="h-4 w-4 shrink-0 text-brand-600 sm:opacity-0 sm:transition sm:group-hover:opacity-100" />
                   </a>
                 ))
               ) : (
@@ -578,22 +586,29 @@ export function HomePage() {
             </div>
             <Link
               to="/documents"
-              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-700"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand-700"
             >
               Bibliothèque complète <ArrowRight className="h-4 w-4" />
             </Link>
           </Reveal>
+        </div>
+      </section>
 
-          <Reveal delay={0.08}>
+      {/* Partenaires */}
+      <section className="border-t border-line bg-surface/60 py-12 sm:py-16">
+        <div className="container-app">
+          <Reveal>
             <SectionEyebrow>Partenaires</SectionEyebrow>
-            <h2 className="font-display text-3xl font-semibold text-ink">Ensemble, plus loin</h2>
-            <p className="mt-3 text-muted">
+            <h2 className="font-display text-2xl font-semibold text-ink sm:text-3xl">
+              Ensemble, plus loin
+            </h2>
+            <p className="mt-2 text-sm text-muted sm:mt-3 sm:text-base">
               Institutions, académie, humanitaire et communautés locales.
             </p>
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="mt-5 grid grid-cols-2 gap-2.5 sm:mt-6 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
               {(partners.length > 0
                 ? partners
-                : institutional.partenaires.slice(0, 6).map((name, i) => ({
+                : institutional.partenaires.slice(0, 8).map((name, i) => ({
                     id: `fallback-${i}`,
                     name,
                     logoUrl: undefined as string | undefined,
@@ -601,7 +616,7 @@ export function HomePage() {
               ).map((p) => (
                 <div
                   key={p.id}
-                  className="flex min-h-[96px] flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface/40 px-3 py-4 text-center"
+                  className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-white px-2.5 py-3.5 text-center sm:min-h-[96px] sm:px-3 sm:py-4"
                 >
                   {p.logoUrl ? (
                     <img
@@ -615,13 +630,15 @@ export function HomePage() {
                       {p.name.slice(0, 2).toUpperCase()}
                     </span>
                   )}
-                  <p className="line-clamp-2 text-xs font-semibold text-ink">{p.name}</p>
+                  <p className="line-clamp-2 text-[11px] font-semibold leading-snug text-ink sm:text-xs">
+                    {p.name}
+                  </p>
                 </div>
               ))}
             </div>
             <Link
               to="/partenaires"
-              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-700"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand-700"
             >
               Voir les partenaires <ArrowRight className="h-4 w-4" />
             </Link>

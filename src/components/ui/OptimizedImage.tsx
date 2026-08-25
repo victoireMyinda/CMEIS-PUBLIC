@@ -7,6 +7,7 @@ interface OptimizedImageProps {
   className?: string
   aspect?: string
   priority?: boolean
+  fit?: 'cover' | 'contain'
 }
 
 function isImageReady(img: HTMLImageElement) {
@@ -19,6 +20,7 @@ export function OptimizedImage({
   className,
   aspect = 'aspect-[16/10]',
   priority = false,
+  fit = 'cover',
 }: OptimizedImageProps) {
   const safeSrc = (src || '').trim()
   const imgRef = useRef<HTMLImageElement>(null)
@@ -73,7 +75,8 @@ export function OptimizedImage({
           setLoaded(false)
         }}
         className={cn(
-          'h-full w-full object-cover transition-opacity duration-300',
+          'h-full w-full transition-opacity duration-300',
+          fit === 'contain' ? 'object-contain bg-white' : 'object-cover',
           loaded ? 'opacity-100' : 'opacity-0',
         )}
       />

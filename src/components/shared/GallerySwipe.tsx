@@ -390,6 +390,7 @@ function GalleryMediaCard({
             src={cover}
             alt={item.title}
             aspect="aspect-[4/3]"
+            fit={item.id.startsWith('local-asset-') ? 'contain' : 'cover'}
             priority={priority}
           />
         </div>
@@ -411,9 +412,11 @@ function GalleryMediaCard({
           </span>
         ) : null}
       </div>
-      <div className="px-3.5 py-3.5">
-        <p className="truncate text-sm font-semibold text-ink">{item.title}</p>
-        <p className="mt-0.5 text-xs text-muted">{isVideo ? 'Vidéo' : 'Photo'}</p>
+      <div className="px-2.5 py-2.5 sm:px-3.5 sm:py-3.5">
+        <p className="line-clamp-2 text-xs font-semibold leading-snug text-ink sm:truncate sm:text-sm">
+          {item.title}
+        </p>
+        <p className="mt-0.5 text-[10px] text-muted sm:text-xs">{isVideo ? 'Vidéo' : 'Photo'}</p>
       </div>
     </motion.button>
   )
@@ -495,7 +498,7 @@ export function GallerySwipe({
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
           {items.map((item, index) => (
             <GalleryMediaCard
               key={item.id}
@@ -503,7 +506,7 @@ export function GallerySwipe({
               index={index}
               onOpen={openAt}
               reduceMotion={reduceMotion}
-              priority={index < 3}
+              priority={index < 4}
             />
           ))}
         </div>

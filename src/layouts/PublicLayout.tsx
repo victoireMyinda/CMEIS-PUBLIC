@@ -42,8 +42,8 @@ export function PublicLayout({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi
     <div
       className={
         variant === 'isssi'
-          ? 'flex min-h-dvh flex-col bg-[#f3f6f4] [font-feature-settings:"ss01"]'
-          : 'flex min-h-dvh flex-col'
+          ? 'flex min-h-dvh w-full flex-col overflow-x-clip bg-[#f3f6f4] [font-feature-settings:"ss01"]'
+          : 'flex min-h-dvh w-full flex-col overflow-x-clip'
       }
     >
       {variant === 'isssi' ? (

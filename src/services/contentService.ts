@@ -3,17 +3,12 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
   serverTimestamp,
-  where,
   type DocumentData,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '@/firebase/config'
+import { getPublicDocs, listenPublicDocs } from '@/services/firestorePublic'
 import {
   mockDocuments,
   mockGallery,
@@ -38,6 +33,7 @@ import type {
   SiteSettings,
 } from '@/types'
 import { getVideoPosterUrl, getYouTubeId } from '@/utils/videoEmbed'
+import { withLocalGallery } from '@/app/localGallery'
 
 function toIsoDate(value: unknown): string | undefined {
   if (!value) return undefined
@@ -225,22 +221,21 @@ export const defaultPages: Record<string, Omit<PageContent, 'id'>> = {
       'L’**ISSSI** est le bras académique du CMEIS-DG3. Il propose un environnement d’enseignement structuré, exigeant et tourné vers la pratique professionnelle.',
       '',
       'Notre ambition est de préparer des diplômés capables d’intervenir avec rigueur dans les structures de santé, les programmes communautaires et les organisations partenaires.',
-      '',
-      '## Ce que propose l’institut',
+    ].join('\n'),
+    sectionOffers: [
       '- Des filières et options adaptées aux besoins du secteur',
       '- Un accompagnement des candidats de la préinscription à l’admission',
       '- Une information claire sur le campus, les frais et le calendrier académique',
       '- Une communication régulière via les actualités académiques',
-      '',
-      '## Axes de formation',
+    ].join('\n'),
+    sectionAxes: [
       '- Sciences infirmières et soins',
       '- Santé communautaire et santé publique',
       '- Techniques de laboratoire biomédical',
       '- Nutrition et diététique',
-      '',
-      '## Vie académique',
-      'Les étudiants trouvent sur ce portail les rubriques essentielles : Mot de la Direction générale, Vision et mission, Campus, Conditions d’admission, Frais académiques, Préinscription, Actualités et Contact.',
     ].join('\n'),
+    sectionAcademicLife:
+      'Les étudiants trouvent sur ce portail les rubriques essentielles : Mot de la Direction générale, Vision et mission, Campus, Conditions d’admission, Frais académiques, Préinscription, Actualités et Contact.',
     status: 'published',
   },
   'isssi-mot-direction': {
@@ -347,28 +342,31 @@ export async function getPageBySlug(slug: string): Promise<PageContent | null> {
     return fallback ? { id: slug, ...fallback } : null
   }
   try {
-    const snap = await getDocs(
-      query(collection(db, 'pages'), where('slug', '==', slug), limit(1)),
-    )
-    const first = snap.docs[0]
-    if (first) {
-      const page = mapDoc<PageContent>(first.id, first.data())
-      // Page existante mais désactivée / non publiée : pas de fallback mock
-      if (!isPagePubliclyVisible(page)) return null
-      return page
-    }
-  } catch {
-    // fall through
+    // Filtrer par status côté requête : requis pour les règles Firestore publiques
+    const snap = await getPublicDocs('pages')
+    const page = snap.docs
+      .map((d) => mapDoc<PageContent>(d.id, d.data()))
+      .filter((item) => item.slug === slug && isPagePubliclyVisible(item))
+      .sort((a, b) => {
+        const ta = Date.parse(toIsoDate(a.updatedAt) || '') || 0
+        const tb = Date.parse(toIsoDate(b.updatedAt) || '') || 0
+        return tb - ta
+      })[0]
+    if (page) return page
+    // Page absente ou brouillon : ne pas servir le contenu mock figé
+    return null
+  } catch (e) {
+    console.error('getPageBySlug failed', e)
+    const fallback = defaultPages[slug]
+    return fallback ? { id: slug, ...fallback } : null
   }
-  const fallback = defaultPages[slug]
-  return fallback ? { id: slug, ...fallback } : null
 }
 
-/** Slugs de rubriques masquées (désactivées ou non publiées). */
+/** Slugs de rubriques masquées (désactivées). Les brouillons sont invisibles aux règles publiques. */
 export async function getDisabledPageSlugs(): Promise<string[]> {
   if (!isFirebaseConfigured || !db) return []
   try {
-    const snap = await getDocs(collection(db, 'pages'))
+    const snap = await getPublicDocs('pages')
     return snap.docs
       .map((d) => mapDoc<PageContent>(d.id, d.data()))
       .filter((page) => page.slug && !isPagePubliclyVisible(page))
@@ -384,9 +382,7 @@ export async function getNews(scope?: PortalScope, take = 12): Promise<NewsItem[
   }
   try {
     // Filtrer par status côté requête : requis pour les règles Firestore publiques
-    const snap = await getDocs(
-      query(collection(db, 'news'), where('status', '==', 'published')),
-    )
+    const snap = await getPublicDocs('news')
     const items = snap.docs.map((d) => mapNewsDoc(d.id, d.data()))
     return filterNewsList(items, scope, take)
   } catch (e) {
@@ -407,9 +403,8 @@ export function listenNews(
     return () => undefined
   }
 
-  const q = query(collection(db, 'news'), where('status', '==', 'published'))
-  return onSnapshot(
-    q,
+  return listenPublicDocs(
+    'news',
     (snap) => {
       const items = snap.docs.map((d) => mapNewsDoc(d.id, d.data()))
       onData(filterNewsList(items, scope, take))
@@ -422,20 +417,27 @@ export function listenNews(
   )
 }
 
+function pickPublishedNewsBySlug(items: NewsItem[], slug: string): NewsItem | null {
+  const matches = items.filter(
+    (item) => item.slug === slug && !item.deletedAt && isNewsVisible(item),
+  )
+  if (matches.length === 0) return null
+  return [...matches].sort((a, b) => {
+    const ta = Date.parse(toIsoDate(a.publishedAt) || toIsoDate(a.updatedAt) || '') || 0
+    const tb = Date.parse(toIsoDate(b.publishedAt) || toIsoDate(b.updatedAt) || '') || 0
+    return tb - ta
+  })[0]
+}
+
 export async function getNewsBySlug(slug: string): Promise<NewsItem | null> {
   if (!isFirebaseConfigured || !db) {
     const item = mockNews.find((n) => n.slug === slug) ?? null
     return item && item.status === 'published' && isNewsVisible(item) ? item : null
   }
   try {
-    const snap = await getDocs(
-      query(collection(db, 'news'), where('slug', '==', slug), limit(1)),
-    )
-    const first = snap.docs[0]
-    if (!first) return null
-    const item = mapNewsDoc(first.id, first.data())
-    if (item.deletedAt || item.status !== 'published' || !isNewsVisible(item)) return null
-    return item
+    const snap = await getPublicDocs('news')
+    const items = snap.docs.map((d) => mapNewsDoc(d.id, d.data()))
+    return pickPublishedNewsBySlug(items, slug)
   } catch (e) {
     console.error('getNewsBySlug failed', e)
     return null
@@ -453,19 +455,11 @@ export function listenNewsBySlug(
     return () => undefined
   }
 
-  const q = query(collection(db, 'news'), where('slug', '==', slug), limit(1))
-  return onSnapshot(
-    q,
+  return listenPublicDocs(
+    'news',
     (snap) => {
-      const first = snap.docs[0]
-      if (!first) {
-        onData(null)
-        return
-      }
-      const item = mapNewsDoc(first.id, first.data())
-      onData(
-        item.deletedAt || item.status !== 'published' || !isNewsVisible(item) ? null : item,
-      )
+      const items = snap.docs.map((d) => mapNewsDoc(d.id, d.data()))
+      onData(pickPublishedNewsBySlug(items, slug))
     },
     (err) => {
       console.error('listenNewsBySlug failed', err)
@@ -476,14 +470,16 @@ export function listenNewsBySlug(
 }
 
 export async function getPrograms(): Promise<ProgramItem[]> {
+  // Sans Firebase : démo locale uniquement. En production, la source unique est l’admin.
   if (!isFirebaseConfigured || !db) return mockPrograms
   try {
-    const snap = await getDocs(collection(db, 'programs'))
-    return publishedScope(notDeleted(snap.docs.map((d) => mapDoc<ProgramItem>(d.id, d.data())))).sort(
+    const snap = await getPublicDocs('programs')
+    return notDeleted(snap.docs.map((d) => mapDoc<ProgramItem>(d.id, d.data()))).sort(
       (a, b) => (a.order ?? 0) - (b.order ?? 0),
     )
-  } catch {
-    return mockPrograms
+  } catch (err) {
+    console.error('getPrograms failed', err)
+    return []
   }
 }
 
@@ -497,13 +493,14 @@ export async function getDocuments(scope?: PortalScope): Promise<DocumentItem[]>
     return mockDocuments.filter((d) => !scope || d.scope === scope || d.scope === 'both')
   }
   try {
-    const snap = await getDocs(collection(db, 'documents'))
+    const snap = await getPublicDocs('documents')
     return publishedScope(
       notDeleted(snap.docs.map((d) => mapDoc<DocumentItem>(d.id, d.data()))),
       scope,
     )
-  } catch {
-    return mockDocuments
+  } catch (e) {
+    console.error('getDocuments failed', e)
+    return []
   }
 }
 
@@ -586,22 +583,28 @@ function buildGalleryItems(
 
 export async function getGallery(scope?: PortalScope): Promise<GalleryItem[]> {
   if (!isFirebaseConfigured || !db) {
-    return mockGallery.filter((g) => !scope || g.scope === scope || g.scope === 'both')
+    return withLocalGallery(
+      mockGallery.filter((g) => !scope || g.scope === scope || g.scope === 'both'),
+      scope,
+    )
   }
   try {
     // status == published requis pour les règles Firestore publiques
     const [albumsSnap, imagesSnap] = await Promise.all([
-      getDocs(query(collection(db, 'galleries'), where('status', '==', 'published'))),
-      getDocs(query(collection(db, 'galleryImages'), where('status', '==', 'published'))),
+      getPublicDocs('galleries'),
+      getPublicDocs('galleryImages'),
     ])
-    return buildGalleryItems(
-      albumsSnap.docs.map((d) => mapDoc<GalleryAlbumRow>(d.id, d.data())),
-      imagesSnap.docs.map((d) => mapDoc<GalleryMediaRow>(d.id, d.data())),
+    return withLocalGallery(
+      buildGalleryItems(
+        albumsSnap.docs.map((d) => mapDoc<GalleryAlbumRow>(d.id, d.data())),
+        imagesSnap.docs.map((d) => mapDoc<GalleryMediaRow>(d.id, d.data())),
+        scope,
+      ),
       scope,
     )
   } catch (e) {
     console.error('getGallery failed', e)
-    return []
+    return withLocalGallery([], scope)
   }
 }
 
@@ -612,17 +615,22 @@ export function listenGallery(
   onError?: (error: Error) => void,
 ): Unsubscribe {
   if (!isFirebaseConfigured || !db) {
-    onData(mockGallery.filter((g) => !scope || g.scope === scope || g.scope === 'both'))
+    onData(
+      withLocalGallery(
+        mockGallery.filter((g) => !scope || g.scope === scope || g.scope === 'both'),
+        scope,
+      ),
+    )
     return () => undefined
   }
 
   let albums: GalleryAlbumRow[] = []
   let images: GalleryMediaRow[] = []
 
-  const emit = () => onData(buildGalleryItems(albums, images, scope))
+  const emit = () => onData(withLocalGallery(buildGalleryItems(albums, images, scope), scope))
 
-  const unsubAlbums = onSnapshot(
-    query(collection(db, 'galleries'), where('status', '==', 'published')),
+  const unsubAlbums = listenPublicDocs(
+    'galleries',
     (snap) => {
       albums = snap.docs.map((d) => mapDoc<GalleryAlbumRow>(d.id, d.data()))
       emit()
@@ -630,12 +638,12 @@ export function listenGallery(
     (err) => {
       console.error('listenGallery albums failed', err)
       onError?.(err)
-      onData([])
+      onData(withLocalGallery([], scope))
     },
   )
 
-  const unsubImages = onSnapshot(
-    query(collection(db, 'galleryImages'), where('status', '==', 'published')),
+  const unsubImages = listenPublicDocs(
+    'galleryImages',
     (snap) => {
       images = snap.docs.map((d) => mapDoc<GalleryMediaRow>(d.id, d.data()))
       emit()
@@ -643,7 +651,7 @@ export function listenGallery(
     (err) => {
       console.error('listenGallery images failed', err)
       onError?.(err)
-      onData([])
+      onData(withLocalGallery([], scope))
     },
   )
 
@@ -656,24 +664,39 @@ export function listenGallery(
 export async function getPartners(): Promise<Partner[]> {
   if (!isFirebaseConfigured || !db) return mockPartners
   try {
-    const snap = await getDocs(collection(db, 'partners'))
+    const snap = await getPublicDocs('partners')
     return notDeleted(snap.docs.map((d) => mapDoc<Partner>(d.id, d.data())))
-      .filter((p) => (p.status === 'published' || !p.status) && p.visible !== false)
+      .filter((p) => p.status === 'published' || !p.status)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-  } catch {
-    return mockPartners
+  } catch (e) {
+    console.error('getPartners failed', e)
+    return []
   }
 }
 
 export async function getAdmissions(): Promise<AdmissionInfo[]> {
   if (!isFirebaseConfigured || !db) return []
   try {
-    const snap = await getDocs(
-      query(collection(db, 'admissions'), orderBy('updatedAt', 'desc')),
-    )
-    return publishedScope(notDeleted(snap.docs.map((d) => mapDoc<AdmissionInfo>(d.id, d.data()))))
-  } catch {
+    const snap = await getPublicDocs('admissions')
+    return publishedScope(
+      notDeleted(snap.docs.map((d) => mapDoc<AdmissionInfo>(d.id, d.data()))),
+    ).sort((a, b) => {
+      const ta = Date.parse(toIsoDate(a.updatedAt) || '') || 0
+      const tb = Date.parse(toIsoDate(b.updatedAt) || '') || 0
+      return tb - ta
+    })
+  } catch (e) {
+    console.error('getAdmissions failed', e)
     return []
+  }
+}
+
+function normalizePaymentInfo(id: string, data: DocumentData): PaymentInfo | null {
+  const item = mapDoc<PaymentInfo>(id, data)
+  if (item.status === 'draft' || item.status === 'archived') return null
+  return {
+    ...item,
+    mobileMoney: Array.isArray(item.mobileMoney) ? item.mobileMoney : [],
   }
 }
 
@@ -683,18 +706,42 @@ export async function getPaymentInfo(
   if (!isFirebaseConfigured || !db) return null
   try {
     const snap = await getDoc(doc(db, 'paymentInfo', portal))
-    if (!snap.exists()) return null
-    const data = mapDoc<PaymentInfo>(snap.id, snap.data())
-    // Brouillon = masqué ; absence de statut = publié (docs anciens)
-    if (data.status === 'draft' || data.status === 'archived') return null
-    return {
-      ...data,
-      mobileMoney: Array.isArray(data.mobileMoney) ? data.mobileMoney : [],
-    }
+    if (snap.exists()) return normalizePaymentInfo(snap.id, snap.data())
+  } catch (e) {
+    console.error('getPaymentInfo get failed', e)
+  }
+  try {
+    const snap = await getPublicDocs('paymentInfo')
+    const match = snap.docs.find((d) => d.id === portal) ?? snap.docs[0]
+    return match ? normalizePaymentInfo(match.id, match.data()) : null
   } catch (e) {
     console.error('getPaymentInfo failed', e)
     return null
   }
+}
+
+/** Écoute temps réel Admin → Paiements ISSSI → /isssi/frais. */
+export function listenPaymentInfo(
+  portal: 'isssi' = 'isssi',
+  onData: (info: PaymentInfo | null) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  if (!isFirebaseConfigured || !db) {
+    onData(null)
+    return () => undefined
+  }
+  return listenPublicDocs(
+    'paymentInfo',
+    (snap) => {
+      const match = snap.docs.find((d) => d.id === portal) ?? snap.docs[0]
+      onData(match ? normalizePaymentInfo(match.id, match.data()) : null)
+    },
+    (err) => {
+      console.error('listenPaymentInfo failed', err)
+      onError?.(err)
+      onData(null)
+    },
+  )
 }
 
 export async function submitRegistration(

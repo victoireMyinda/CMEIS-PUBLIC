@@ -76,7 +76,9 @@ export function Header({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi' }) {
                 )
               }
             >
-              {'shortLabel' in item && item.shortLabel ? item.shortLabel : item.label}
+              {'shortLabel' in item && typeof item.shortLabel === 'string' && item.shortLabel
+                ? item.shortLabel
+                : item.label}
             </NavLink>
           ))}
         </nav>

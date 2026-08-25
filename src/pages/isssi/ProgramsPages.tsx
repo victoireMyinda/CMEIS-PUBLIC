@@ -32,6 +32,8 @@ export function ProgramsListPage() {
           <div className="flex justify-center py-16">
             <Spinner />
           </div>
+        ) : items.length === 0 ? (
+          <EmptyState title="Aucune filière publiée" description="Les filières publiées depuis l’admin apparaîtront ici." />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((p) => (
@@ -42,6 +44,7 @@ export function ProgramsListPage() {
                   <p className="mt-2 text-sm text-muted">{p.summary || p.description}</p>
                   <p className="mt-3 text-xs font-medium text-brand-700">
                     {p.level} · {p.duration}
+                    {p.tuition ? ` · ${p.tuition}` : ''}
                   </p>
                   <Link
                     to={`/isssi/filieres/${p.slug}`}
@@ -99,9 +102,21 @@ export function ProgramDetailPage() {
           {item.level} · {item.duration}
         </p>
         <h1 className="mt-2 font-display text-3xl font-semibold text-ink">{item.title}</h1>
-        <p className="mt-4 max-w-3xl text-muted">{item.description}</p>
+        {item.summary ? <p className="mt-3 max-w-3xl text-lg text-brand-800">{item.summary}</p> : null}
+        <p className="mt-4 max-w-3xl text-muted whitespace-pre-line">{item.description}</p>
+        {item.conditions ? (
+          <div className="mt-6 max-w-3xl rounded-2xl border border-line bg-brand-50/50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Conditions</p>
+            <p className="mt-1 text-sm text-ink whitespace-pre-line">{item.conditions}</p>
+          </div>
+        ) : null}
+        {item.tuition ? (
+          <p className="mt-4 text-sm font-medium text-ink">
+            Scolarité : <span className="text-brand-800">{item.tuition}</span>
+          </p>
+        ) : null}
         <div className="mt-6">
-          <Link to="/isssi/preinscription">
+          <Link to={`/isssi/preinscription?filiere=${encodeURIComponent(item.id)}`}>
             <Button>Préinscription à cette filière</Button>
           </Link>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -42,6 +43,8 @@ const stepFields: (keyof FormValues)[][] = [
 const stepTitles = ['Identité', 'Coordonnées', 'Parcours', 'Confirmation']
 
 export function PreinscriptionPage() {
+  const [searchParams] = useSearchParams()
+  const filiereFromUrl = searchParams.get('filiere') || ''
   const { draft, setDraft, clearDraft } = useRegistrationDraftStore()
   const [step, setStep] = useState(draft.step ?? 0)
   const [submittedId, setSubmittedId] = useState<string | null>(null)
@@ -57,6 +60,7 @@ export function PreinscriptionPage() {
     trigger,
     getValues,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(fullSchema),
@@ -69,7 +73,7 @@ export function PreinscriptionPage() {
       province: draft.province || '',
       telephone: draft.telephone || '',
       email: draft.email || '',
-      filiereId: draft.filiereId || '',
+      filiereId: draft.filiereId || filiereFromUrl || '',
       niveauEtudes: draft.niveauEtudes || '',
       ecoleProvenance: draft.ecoleProvenance || '',
       anneeAcademique: draft.anneeAcademique || '2026-2027',
@@ -77,6 +81,12 @@ export function PreinscriptionPage() {
     },
     mode: 'onChange',
   })
+
+  useEffect(() => {
+    if (!filiereFromUrl || programs.length === 0) return
+    const exists = programs.some((p) => p.id === filiereFromUrl)
+    if (exists) setValue('filiereId', filiereFromUrl)
+  }, [filiereFromUrl, programs, setValue])
 
   useEffect(() => {
     const sub = watch((values) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowRight, GraduationCap, Newspaper } from 'lucide-react'
@@ -11,10 +11,10 @@ import { OptimizedImage } from '@/components/ui/OptimizedImage'
 import {
   getHomepage,
   getPageBySlug,
-  getPaymentInfo,
   getPrograms,
   listenGallery,
   listenNews,
+  listenPaymentInfo,
 } from '@/services/contentService'
 import type {
   GalleryItem,
@@ -25,7 +25,7 @@ import type {
   ProgramItem,
 } from '@/types'
 import { useSite } from '@/app/SiteProvider'
-import { cn } from '@/utils/cn'
+import { resolvePresentationBlocks } from '@/utils/presentationBlocks'
 
 const quickNav = [
   { label: 'Filières', to: '/isssi/filieres' },
@@ -127,7 +127,6 @@ export function IsssiHomePage() {
   const [news, setNews] = useState<NewsItem[]>([])
   const [payment, setPayment] = useState<PaymentInfo | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showFullIntro, setShowFullIntro] = useState(false)
 
   useEffect(() => {
     void Promise.all([
@@ -136,14 +135,12 @@ export function IsssiHomePage() {
       getPageBySlug('isssi-vision-mission'),
       getPageBySlug('isssi-campus'),
       getPrograms(),
-      getPaymentInfo('isssi'),
-    ]).then(([h, p, v, c, prog, pay]) => {
+    ]).then(([h, p, v, c, prog]) => {
       setHome(h)
       setPage(p)
       setVision(v)
       setCampus(c)
       setPrograms(prog)
-      setPayment(pay)
       setLoading(false)
     })
   }, [])
@@ -151,9 +148,11 @@ export function IsssiHomePage() {
   useEffect(() => {
     const unsubNews = listenNews('isssi', 3, setNews)
     const unsubGallery = listenGallery('isssi', (items) => setGallery(items.slice(0, 12)))
+    const unsubPayment = listenPaymentInfo('isssi', setPayment)
     return () => {
       unsubNews()
       unsubGallery()
+      unsubPayment()
     }
   }, [])
 
@@ -161,11 +160,25 @@ export function IsssiHomePage() {
   const titleSecondary = home?.titleSecondary || site.isssi.fullName
   const titleTertiary = home?.titleTertiary || home?.slogan || site.isssi.tagline
   const banner = home?.bannerUrl
+  const presentation = useMemo(
+    () =>
+      resolvePresentationBlocks({
+        content: page?.content,
+        sectionOffers: page?.sectionOffers,
+        sectionAxes: page?.sectionAxes,
+        sectionAcademicLife: page?.sectionAcademicLife,
+      }),
+    [page],
+  )
   const featuredPrograms = programs.slice(0, 6)
 
   return (
     <>
-      <Seo title="Présentation de l’ISSSI" description={titleTertiary} path="/isssi" />
+      <Seo
+        title={page?.seoTitle || page?.title || 'Présentation de l’ISSSI'}
+        description={page?.seoDescription || page?.excerpt || titleTertiary}
+        path="/isssi"
+      />
 
       {/* Bannière pleine largeur — image dominante, texte en bas */}
       <section className="relative min-h-[78dvh] overflow-hidden bg-brand-900 text-white sm:min-h-[86dvh]">
@@ -278,7 +291,7 @@ export function IsssiHomePage() {
         </div>
       </section>
 
-      {/* Présentation */}
+      {/* Présentation — sync 1:1 avec admin (titre, description, 3 sections) */}
       <section id="presentation" className="scroll-mt-20 bg-white py-10 sm:py-16 lg:py-20">
         <div className="container-app">
           {loading ? (
@@ -297,38 +310,52 @@ export function IsssiHomePage() {
                     {page.excerpt}
                   </p>
                 ) : null}
-                <div
-                  className={cn(
-                    'relative mt-5 sm:mt-7',
-                    !showFullIntro && 'max-h-52 overflow-hidden sm:max-h-none',
-                  )}
-                >
-                  {page?.content ? (
+
+                {presentation.intro ? (
+                  <div className="mt-5 sm:mt-7">
                     <CmsProse
-                      content={page.content}
+                      content={presentation.intro}
                       className="max-w-3xl space-y-2.5 text-sm leading-relaxed text-muted sm:space-y-3 sm:text-base"
                     />
-                  ) : (
-                    <p className="text-sm leading-relaxed text-muted sm:text-base">
-                      L’ISSSI forme des professionnels compétents et engagés.
-                    </p>
-                  )}
-                  {!showFullIntro ? (
-                    <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent sm:hidden"
-                      aria-hidden
-                    />
+                  </div>
+                ) : null}
+
+                <div className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
+                  {presentation.offers ? (
+                    <div className="rounded-xl border border-brand-100 bg-[#f7faf8] p-4 sm:p-5">
+                      <h3 className="font-display text-lg font-semibold text-brand-900">
+                        Ce que propose l’institut
+                      </h3>
+                      <CmsProse
+                        content={presentation.offers}
+                        className="mt-3 space-y-1.5 text-sm leading-relaxed text-muted sm:text-base"
+                      />
+                    </div>
+                  ) : null}
+                  {presentation.axes ? (
+                    <div className="rounded-xl border border-brand-100 bg-white p-4 sm:p-5">
+                      <h3 className="font-display text-lg font-semibold text-brand-900">
+                        Axes de formation
+                      </h3>
+                      <CmsProse
+                        content={presentation.axes}
+                        className="mt-3 space-y-1.5 text-sm leading-relaxed text-muted sm:text-base"
+                      />
+                    </div>
+                  ) : null}
+                  {presentation.academicLife ? (
+                    <div className="rounded-xl border border-brand-100 bg-[#f7faf8] p-4 sm:p-5">
+                      <h3 className="font-display text-lg font-semibold text-brand-900">
+                        Vie académique
+                      </h3>
+                      <CmsProse
+                        content={presentation.academicLife}
+                        className="mt-3 space-y-1.5 text-sm leading-relaxed text-muted sm:text-base"
+                      />
+                    </div>
                   ) : null}
                 </div>
-                {page?.content ? (
-                  <button
-                    type="button"
-                    className="mt-3 min-h-11 text-left text-sm font-semibold text-brand-700 sm:hidden"
-                    onClick={() => setShowFullIntro((v) => !v)}
-                  >
-                    {showFullIntro ? 'Réduire le texte' : 'Lire toute la présentation'}
-                  </button>
-                ) : null}
+
                 <div className="mt-5 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:gap-x-4 sm:gap-y-2">
                   <Link
                     to="/isssi/vision-mission"
@@ -613,15 +640,25 @@ export function IsssiHomePage() {
                 </Link>
               </div>
             </Reveal>
-            <div className="grid gap-3 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <article className="border border-brand-100 bg-white p-5">
-                <h3 className="font-display text-lg font-semibold text-brand-900">Frais officiels</h3>
-                <p className="mt-3 line-clamp-6 whitespace-pre-line text-sm leading-relaxed text-muted">
-                  {payment.feesOverview}
+                <h3 className="font-display text-lg font-semibold text-brand-900">
+                  Frais d’inscription
+                </h3>
+                <p className="mt-3 text-lg font-semibold text-ink sm:text-xl">
+                  {payment.registrationFee || 'Sur demande'}
                 </p>
               </article>
               <article className="border border-brand-100 bg-white p-5">
-                <h3 className="font-display text-lg font-semibold text-brand-900">Banque</h3>
+                <h3 className="font-display text-lg font-semibold text-brand-900">
+                  Frais académiques / an
+                </h3>
+                <p className="mt-3 text-lg font-semibold text-ink sm:text-xl">
+                  {payment.annualFee || 'Sur demande'}
+                </p>
+              </article>
+              <article className="border border-brand-100 bg-white p-5">
+                <h3 className="font-display text-lg font-semibold text-brand-900">Bancaire</h3>
                 {payment.bankName || payment.bankAccountNumber ? (
                   <dl className="mt-3 space-y-2 text-sm text-muted">
                     {payment.bankName ? (
@@ -752,10 +789,11 @@ export function IsssiFeesPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    void getPaymentInfo('isssi').then((data) => {
+    const unsub = listenPaymentInfo('isssi', (data) => {
       setInfo(data)
       setLoading(false)
-    })
+    }, () => setLoading(false))
+    return unsub
   }, [])
 
   if (loading) {
@@ -774,9 +812,8 @@ export function IsssiFeesPage() {
         <section className="border-t border-brand-100 bg-[#f3f6f4] py-8">
           <div className="container-app">
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              Les frais et modalités de paiement se configurent dans l’admin (espace ISSSI →{' '}
-              <strong>Paiements</strong>), statut <strong>Publié</strong>. Ils apparaissent ici et
-              sur l’accueil ISSSI.
+              Les frais et moyens de paiement se configurent dans l’admin (espace ISSSI →{' '}
+              <strong>Frais & paiements</strong>), statut <strong>Publié</strong>.
             </p>
           </div>
         </section>
@@ -816,26 +853,38 @@ export function IsssiFeesPage() {
         <div className="container-app grid gap-4 lg:grid-cols-2">
           <article className="border border-brand-100 bg-[#f3f6f4] p-5 sm:p-6">
             <h2 className="font-display text-xl font-semibold text-brand-900">
-              Frais officiels
+              Frais d’inscription
             </h2>
-            <div className="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted sm:text-base">
-              {info.feesOverview}
-            </div>
+            <p className="mt-4 text-2xl font-semibold tracking-tight text-brand-900">
+              {info.registrationFee || 'Communiqué par l’administration'}
+            </p>
           </article>
 
           <article className="border border-brand-100 bg-[#f3f6f4] p-5 sm:p-6">
             <h2 className="font-display text-xl font-semibold text-brand-900">
-              Instructions de paiement
+              Frais académiques par an
             </h2>
-            <div className="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted sm:text-base">
-              {info.instructions}
-            </div>
+            <p className="mt-4 text-2xl font-semibold tracking-tight text-brand-900">
+              {info.annualFee || 'Communiqué par l’administration'}
+            </p>
           </article>
+
+          {!info.registrationFee && !info.annualFee && info.feesOverview ? (
+            <article className="border border-brand-100 bg-[#f3f6f4] p-5 sm:p-6 lg:col-span-2">
+              <h2 className="font-display text-xl font-semibold text-brand-900">
+                Frais officiels
+              </h2>
+              <CmsProse
+                content={info.feesOverview}
+                className="mt-4 max-w-none space-y-2 text-sm leading-relaxed text-muted sm:text-base"
+              />
+            </article>
+          ) : null}
 
           {hasBank ? (
             <article className="border border-brand-100 bg-white p-5 sm:p-6">
               <h2 className="font-display text-xl font-semibold text-brand-900">
-                Coordonnées bancaires
+                Paiement bancaire
               </h2>
               <dl className="mt-4 space-y-2 text-sm text-muted sm:text-base">
                 {info.bankName ? (
@@ -869,7 +918,7 @@ export function IsssiFeesPage() {
           {mobileLines.length ? (
             <article className="border border-brand-100 bg-white p-5 sm:p-6">
               <h2 className="font-display text-xl font-semibold text-brand-900">
-                Mobile Money officiels
+                Paiement Mobile Money
               </h2>
               <ul className="mt-4 space-y-3">
                 {mobileLines.map((m) => (
@@ -882,6 +931,18 @@ export function IsssiFeesPage() {
                   </li>
                 ))}
               </ul>
+            </article>
+          ) : null}
+
+          {info.instructions ? (
+            <article className="border border-brand-100 bg-[#f3f6f4] p-5 sm:p-6 lg:col-span-2">
+              <h2 className="font-display text-xl font-semibold text-brand-900">
+                Instructions de paiement
+              </h2>
+              <CmsProse
+                content={info.instructions}
+                className="mt-4 max-w-none space-y-2 text-sm leading-relaxed text-muted sm:text-base"
+              />
             </article>
           ) : null}
         </div>

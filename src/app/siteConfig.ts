@@ -106,6 +106,7 @@ export const navPathToSlug: Record<string, string> = {
   '/domaines': 'domaines',
   '/programmes': 'programmes',
   '/services': 'services',
+  '/isssi': 'isssi',
   '/isssi/mot-direction': 'isssi-mot-direction',
   '/isssi/vision-mission': 'isssi-vision-mission',
   '/isssi/campus': 'isssi-campus',
