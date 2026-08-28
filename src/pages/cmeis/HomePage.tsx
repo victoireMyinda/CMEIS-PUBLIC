@@ -13,14 +13,15 @@ import {
 import { Seo } from '@/components/shared/Seo'
 import { NewsCard } from '@/components/shared/NewsCard'
 import { GallerySwipe } from '@/components/shared/GallerySwipe'
+import { HeroBanner, resolveBannerSlides } from '@/components/shared/HeroBanner'
 import { Button } from '@/components/ui/Button'
 import { institutional } from '@/app/institutionalContent'
 import {
   getDocuments,
-  getHomepage,
   getPartners,
   getPrograms,
   listenGallery,
+  listenHomepage,
   listenNews,
 } from '@/services/contentService'
 import type {
@@ -33,6 +34,8 @@ import type {
 } from '@/types'
 import { useSite } from '@/app/SiteProvider'
 import { cn } from '@/utils/cn'
+import pcaJpeg from '@/assets/PCA.jpeg'
+import defensePcaJpeg from '@/assets/Defense PCA.jpeg'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -128,13 +131,8 @@ export function HomePage() {
   useEffect(() => {
     const unsubNews = listenNews(undefined, 6, setNews)
     const unsubGallery = listenGallery('cmeis', (items) => setGallery(items.slice(0, 9)))
-    void Promise.all([
-      getHomepage(),
-      getPrograms(),
-      getPartners(),
-      getDocuments('cmeis'),
-    ]).then(([h, p, pt, d]) => {
-      setHome(h)
+    const unsubHome = listenHomepage('cmeis', setHome)
+    void Promise.all([getPrograms(), getPartners(), getDocuments('cmeis')]).then(([p, pt, d]) => {
       setPrograms(p.slice(0, 4))
       setPartners(pt.slice(0, 8))
       setDocuments(d.slice(0, 6))
@@ -142,84 +140,60 @@ export function HomePage() {
     return () => {
       unsubNews()
       unsubGallery()
+      unsubHome()
     }
   }, [])
 
   const titlePrimary = home?.titlePrimary || site.name
   const titleSecondary = home?.titleSecondary || site.fullName
   const titleTertiary = home?.titleTertiary || home?.slogan || site.tagline
-  const banner = home?.bannerUrl
+  const bannerSlides = resolveBannerSlides(home, [pcaJpeg, defensePcaJpeg])
 
   return (
     <>
       <Seo title="Accueil" description={titleTertiary} path="/" />
 
-      {/* Hero — seule grande image (banner CMS si dispo) */}
-      <section className="relative min-h-[88dvh] overflow-hidden bg-brand-900 text-white">
-        {banner ? (
-          <motion.div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url('${banner}')` }}
-            initial={reduceMotion ? false : { scale: 1.06 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          />
-        ) : null}
-        <div
-          className={cn(
-            'absolute inset-0',
-            banner
-              ? 'bg-gradient-to-br from-brand-900/94 via-brand-800/82 to-brand-700/60'
-              : 'bg-[radial-gradient(ellipse_at_20%_10%,rgba(232,184,74,0.22),transparent_42%),radial-gradient(ellipse_at_90%_80%,rgba(47,127,94,0.35),transparent_50%),linear-gradient(160deg,#05261c_0%,#083226_45%,#0b3d2e_100%)]',
-          )}
-        />
-        <div className="container-app relative flex min-h-[88dvh] flex-col justify-center pb-16 pt-24 sm:pb-24 sm:pt-28">
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.08 }}
-            className="max-w-3xl"
-          >
-            <div className="mb-5 flex items-center gap-3">
-              <span className="h-px w-10 bg-accent-400 sm:w-14" aria-hidden />
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-400">
-                ASBL · Kinshasa, RDC
-              </p>
-            </div>
-            <p className="font-display text-5xl font-semibold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
-              {titlePrimary}
+      <HeroBanner slides={bannerSlides}>
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.08 }}
+        >
+          <div className="mb-5 flex items-center gap-3">
+            <span className="h-px w-10 bg-accent-400 sm:w-14" aria-hidden />
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-400">
+              ASBL · Kinshasa, RDC
             </p>
-            <h1 className="mt-5 max-w-2xl text-lg font-medium leading-snug text-white/90 sm:mt-6 sm:text-2xl">
-              {titleSecondary}
-            </h1>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
-              {titleTertiary}
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row">
-              <Link to="/a-propos" className="w-full sm:w-auto">
-                <Button variant="accent" size="lg" fullWidth className="sm:w-auto">
-                  Découvrir CMEIS-DG3
-                </Button>
-              </Link>
-              <Link to="/isssi" className="w-full sm:w-auto">
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  fullWidth
-                  className="border-white/20 bg-white/10 text-white hover:bg-white/20 sm:w-auto"
-                >
-                  Espace ISSSI
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-        <div
-          className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-surface to-transparent"
-          aria-hidden
-        />
-      </section>
+          </div>
+          <p className="font-display text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
+            {titlePrimary}
+          </p>
+          <h1 className="mt-4 max-w-2xl text-base font-medium leading-snug text-white/90 sm:mt-5 sm:text-xl lg:text-2xl">
+            {titleSecondary}
+          </h1>
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/75 sm:text-base lg:text-lg">
+            {titleTertiary}
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row">
+            <Link to="/a-propos" className="w-full sm:w-auto">
+              <Button variant="accent" size="lg" fullWidth className="sm:w-auto">
+                Découvrir CMEIS-DG3
+              </Button>
+            </Link>
+            <Link to="/isssi" className="w-full sm:w-auto">
+              <Button
+                variant="secondary"
+                size="lg"
+                fullWidth
+                className="border-white/20 bg-white/10 text-white hover:bg-white/20 sm:w-auto"
+              >
+                Espace ISSSI
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </motion.div>
+      </HeroBanner>
 
       {/* Stats */}
       <section className="relative z-10 -mt-10 pb-2">
@@ -242,7 +216,7 @@ export function HomePage() {
       </section>
 
       {/* Histoire + piliers (sans photos stock) */}
-      <section className="container-app py-14 sm:py-16">
+      <section className="container-app py-14 sm:py-16 lg:py-20">
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <Reveal>
             <SectionEyebrow>Notre histoire</SectionEyebrow>
@@ -348,7 +322,7 @@ export function HomePage() {
       </section>
 
       {/* Domaines — grille typo */}
-      <section className="py-14 sm:py-16">
+      <section className="py-14 sm:py-16 lg:py-20">
         <div className="container-app">
           <Reveal>
             <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -462,7 +436,7 @@ export function HomePage() {
       </section>
 
       {/* Services */}
-      <section className="container-app py-14 sm:py-16">
+      <section className="container-app py-14 sm:py-16 lg:py-20">
         <Reveal>
           <div className="rounded-[1.75rem] border border-line bg-white p-6 shadow-soft sm:p-9">
             <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
@@ -519,7 +493,7 @@ export function HomePage() {
       </section>
 
       {/* Actualités — images CMS uniquement */}
-      <section className="py-14 sm:py-16">
+      <section className="py-14 sm:py-16 lg:py-20">
         <div className="container-app">
           <Reveal>
             <div className="mb-8 flex items-end justify-between gap-3">
@@ -648,7 +622,7 @@ export function HomePage() {
 
       {/* Galerie CMS */}
       {gallery.length > 0 ? (
-        <section className="py-14 sm:py-16">
+        <section className="py-14 sm:py-16 lg:py-20">
           <div className="container-app">
             <Reveal>
               <div className="mb-8 flex items-end justify-between gap-3">
@@ -705,7 +679,7 @@ export function HomePage() {
       </section>
 
       {/* Contact */}
-      <section className="container-app py-14 sm:py-16">
+      <section className="container-app py-14 sm:py-16 lg:py-20">
         <Reveal>
           <div className="relative overflow-hidden rounded-[1.75rem] bg-brand-900 px-6 py-10 text-white sm:px-10 sm:py-12">
             <div className="pointer-events-none absolute -right-10 top-0 h-48 w-48 rounded-full bg-accent-500/18 blur-3xl" />

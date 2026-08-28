@@ -21,27 +21,19 @@ export function WhatsAppFloat({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isss
       href={href}
       target="_blank"
       rel="noreferrer"
-      aria-label="Contacter via WhatsApp"
+      aria-label="WhatsApp"
+      title="WhatsApp"
       className={cn(
-        'group fixed bottom-5 right-4 z-40 safe-pb sm:bottom-7 sm:right-7',
-        'inline-flex items-center gap-2.5 rounded-full',
-        'bg-brand-800 py-2.5 pl-2.5 pr-4 text-white',
-        'shadow-[0_10px_28px_rgb(5_38_28/0.28)] ring-1 ring-white/15',
-        'transition duration-200',
-        'hover:bg-brand-700 hover:shadow-[0_12px_32px_rgb(5_38_28/0.34)]',
+        'fixed bottom-5 right-4 z-40 safe-pb sm:bottom-6 sm:right-6',
+        'inline-flex h-11 w-11 items-center justify-center rounded-full',
+        'bg-[#25D366] text-white',
+        'shadow-[0_8px_20px_rgb(37_211_102/0.38)] ring-1 ring-black/5',
+        'transition duration-200 hover:scale-105 hover:bg-[#1ebe57]',
         'active:translate-y-px',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500',
       )}
     >
-      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-inner ring-1 ring-black/5">
-        <WhatsAppIcon className="h-[1.35rem] w-[1.35rem]" />
-      </span>
-      <span className="pr-0.5">
-        <span className="block text-[11px] font-medium leading-none text-white/65">Écrire</span>
-        <span className="mt-0.5 block text-sm font-semibold leading-tight tracking-tight">
-          WhatsApp
-        </span>
-      </span>
+      <WhatsAppIcon className="h-5 w-5" />
     </a>
   )
 }

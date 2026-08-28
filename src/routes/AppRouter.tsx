@@ -63,6 +63,12 @@ const ProgramsListPage = lazy(() =>
 const ProgramDetailPage = lazy(() =>
   import('@/pages/isssi/ProgramsPages').then((m) => ({ default: m.ProgramDetailPage })),
 )
+const ShortCoursesPage = lazy(() =>
+  import('@/pages/isssi/ShortCoursesPages').then((m) => ({ default: m.ShortCoursesPage })),
+)
+const ShortCourseDetailPage = lazy(() =>
+  import('@/pages/isssi/ShortCoursesPages').then((m) => ({ default: m.ShortCourseDetailPage })),
+)
 const PreinscriptionPage = lazy(() =>
   import('@/features/registration/PreinscriptionPage').then((m) => ({
     default: m.PreinscriptionPage,
@@ -104,6 +110,8 @@ export function AppRouter() {
             <Route path="campus" element={<IsssiCampusPage />} />
             <Route path="filieres" element={<ProgramsListPage />} />
             <Route path="filieres/:slug" element={<ProgramDetailPage />} />
+            <Route path="formations-courtes" element={<ShortCoursesPage />} />
+            <Route path="formations-courtes/:slug" element={<ShortCourseDetailPage />} />
             <Route path="admission" element={<IsssiAdmissionPage />} />
             <Route path="frais" element={<IsssiFeesPage />} />
             <Route path="preinscription" element={<PreinscriptionPage />} />

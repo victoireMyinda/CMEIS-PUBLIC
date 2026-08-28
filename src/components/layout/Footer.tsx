@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
-import { Share2 } from 'lucide-react'
 import { subscribeNewsletter } from '@/services/contentService'
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Form'
 import { useSite } from '@/app/SiteProvider'
+import { SocialLinks } from '@/components/shared/SocialLinks'
 
 export function Footer({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi' }) {
   const site = useSite()
@@ -104,14 +104,8 @@ export function Footer({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi' }) {
               <p className="text-xs text-red-300">Erreur, réessayez.</p>
             ) : null}
           </form>
-          <div className="mt-4 flex gap-3">
-            <a
-              href={portal.social.facebook || '#'}
-              aria-label="Réseaux sociaux"
-              className="touch-target inline-flex items-center justify-center"
-            >
-              <Share2 className="h-5 w-5" />
-            </a>
+          <div className="mt-4">
+            <SocialLinks social={portal.social} tone="light" />
           </div>
         </div>
       </div>

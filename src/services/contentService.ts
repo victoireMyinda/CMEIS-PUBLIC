@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   getDoc,
+  onSnapshot,
   serverTimestamp,
   type DocumentData,
   type Unsubscribe,
@@ -30,6 +31,8 @@ import type {
   ProgramItem,
   PaymentInfo,
   Registration,
+  ShortCourseItem,
+  AcademyInfo,
   SiteSettings,
 } from '@/types'
 import { getVideoPosterUrl, getYouTubeId } from '@/utils/videoEmbed'
@@ -332,6 +335,25 @@ export async function getHomepage(
   }
 }
 
+export function listenHomepage(
+  portal: 'cmeis' | 'isssi',
+  onData: (home: HomepageConfig | null) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  if (!isFirebaseConfigured || !db) {
+    onData(null)
+    return () => undefined
+  }
+  const id = portal === 'isssi' ? 'isssi' : 'main'
+  return onSnapshot(
+    doc(db, 'homepage', id),
+    (snap) => {
+      onData(snap.exists() ? mapDoc<HomepageConfig>(snap.id, snap.data()) : null)
+    },
+    (err) => onError?.(err),
+  )
+}
+
 function isPagePubliclyVisible(page: PageContent) {
   return !page.deletedAt && page.status === 'published' && page.enabled !== false
 }
@@ -486,6 +508,84 @@ export async function getPrograms(): Promise<ProgramItem[]> {
 export async function getProgramBySlug(slug: string): Promise<ProgramItem | null> {
   const all = await getPrograms()
   return all.find((p) => p.slug === slug) ?? null
+}
+
+export function listenPrograms(
+  onData: (items: ProgramItem[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  if (!isFirebaseConfigured || !db) {
+    onData(mockPrograms)
+    return () => undefined
+  }
+  return listenPublicDocs(
+    'programs',
+    (snap) => {
+      onData(
+        notDeleted(snap.docs.map((d) => mapDoc<ProgramItem>(d.id, d.data()))).sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0),
+        ),
+      )
+    },
+    (err) => {
+      console.error('listenPrograms failed', err)
+      onError?.(err)
+      onData([])
+    },
+  )
+}
+
+export async function getAcademyInfo(): Promise<AcademyInfo | null> {
+  if (!isFirebaseConfigured || !db) return null
+  try {
+    const snap = await getDoc(doc(db, 'academyInfo', 'isssi'))
+    return snap.exists() ? mapDoc<AcademyInfo>(snap.id, snap.data()) : null
+  } catch {
+    return null
+  }
+}
+
+export async function getShortCourses(): Promise<ShortCourseItem[]> {
+  if (!isFirebaseConfigured || !db) return []
+  try {
+    const snap = await getPublicDocs('shortCourses')
+    return notDeleted(snap.docs.map((d) => mapDoc<ShortCourseItem>(d.id, d.data()))).sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    )
+  } catch (err) {
+    console.error('getShortCourses failed', err)
+    return []
+  }
+}
+
+export async function getShortCourseBySlug(slug: string): Promise<ShortCourseItem | null> {
+  const all = await getShortCourses()
+  return all.find((item) => item.slug === slug) ?? null
+}
+
+export function listenShortCourses(
+  onData: (items: ShortCourseItem[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  if (!isFirebaseConfigured || !db) {
+    onData([])
+    return () => undefined
+  }
+  return listenPublicDocs(
+    'shortCourses',
+    (snap) => {
+      onData(
+        notDeleted(snap.docs.map((d) => mapDoc<ShortCourseItem>(d.id, d.data()))).sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0),
+        ),
+      )
+    },
+    (err) => {
+      console.error('listenShortCourses failed', err)
+      onError?.(err)
+      onData([])
+    },
+  )
 }
 
 export async function getDocuments(scope?: PortalScope): Promise<DocumentItem[]> {

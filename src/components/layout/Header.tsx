@@ -14,7 +14,7 @@ const isssiMobileGroups = [
   },
   {
     title: 'Admission',
-    paths: ['/isssi/filieres', '/isssi/admission', '/isssi/frais', '/isssi/preinscription'],
+    paths: ['/isssi/filieres', '/isssi/formations-courtes', '/isssi/admission', '/isssi/frais', '/isssi/preinscription'],
   },
   {
     title: 'Infos',
@@ -45,7 +45,7 @@ export function Header({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi' }) {
           : 'border-b border-line/80 bg-surface/90',
       )}
     >
-      <div className="container-app flex h-16 items-center justify-between gap-3">
+      <div className="container-app flex h-16 items-center justify-between gap-3 lg:h-[4.25rem]">
         <Link to={home} className="flex min-w-0 items-center gap-2.5">
           <img
             src={portal.logoUrl}
@@ -60,8 +60,8 @@ export function Header({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi' }) {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-0.5 xl:flex" aria-label="Navigation principale">
-          {items.slice(0, variant === 'isssi' ? 7 : 6).map((item) => (
+        <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Navigation principale">
+          {items.slice(0, 8).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -69,7 +69,7 @@ export function Header({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi' }) {
               title={item.label}
               className={({ isActive }) =>
                 cn(
-                  'rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
+                  'rounded-lg px-2 py-2 text-[13px] font-medium transition-colors xl:px-2.5 xl:text-sm',
                   isActive
                     ? 'bg-brand-100 text-brand-800'
                     : 'text-muted hover:bg-brand-50 hover:text-brand-800',
@@ -102,7 +102,7 @@ export function Header({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi' }) {
           ) : variant === 'isssi' ? (
               <Link
                 to="/isssi/preinscription"
-                className="hidden rounded-lg bg-accent-500 px-3 py-2 text-sm font-semibold text-ink sm:inline-flex lg:hidden xl:inline-flex"
+                className="hidden rounded-lg bg-accent-500 px-3 py-2 text-sm font-semibold text-ink sm:inline-flex"
               >
                 Préinscription
               </Link>
@@ -110,7 +110,7 @@ export function Header({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi' }) {
           <Button
             variant="ghost"
             size="sm"
-            className="xl:hidden"
+            className="lg:hidden"
             aria-label={mobileNavOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
             aria-expanded={mobileNavOpen}
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
@@ -123,7 +123,7 @@ export function Header({ variant = 'cmeis' }: { variant?: 'cmeis' | 'isssi' }) {
       {mobileNavOpen ? (
         <div
           className={cn(
-            'border-t xl:hidden',
+            'border-t lg:hidden',
             variant === 'isssi' ? 'border-brand-100 bg-white' : 'border-line bg-white',
           )}
         >

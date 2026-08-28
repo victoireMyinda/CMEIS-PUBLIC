@@ -9,9 +9,9 @@ import { PageHero } from '@/components/ui/Feedback'
 import { Button } from '@/components/ui/Button'
 import { FormField, Input, Select, Textarea } from '@/components/ui/Form'
 import { provincesRdc } from '@/app/siteConfig'
-import { getPrograms, submitRegistration } from '@/services/contentService'
+import { listenPrograms, listenShortCourses, submitRegistration } from '@/services/contentService'
 import { useRegistrationDraftStore } from '@/store'
-import type { ProgramItem } from '@/types'
+import type { ProgramItem, ShortCourseItem } from '@/types'
 
 const fullSchema = z.object({
   nom: z.string().min(2, 'Nom requis'),
@@ -25,7 +25,7 @@ const fullSchema = z.object({
     .min(9, 'Téléphone invalide')
     .regex(/^[0-9+\s-]+$/, 'Téléphone invalide'),
   email: z.string().email('Email invalide'),
-  filiereId: z.string().min(1, 'Filière requise'),
+  filiereId: z.string().min(1, 'Filière ou formation requise'),
   niveauEtudes: z.string().min(1, 'Niveau requis'),
   ecoleProvenance: z.string().min(2, 'École requise'),
   anneeAcademique: z.string().min(4, 'Année requise'),
@@ -44,14 +44,20 @@ const stepTitles = ['Identité', 'Coordonnées', 'Parcours', 'Confirmation']
 
 export function PreinscriptionPage() {
   const [searchParams] = useSearchParams()
-  const filiereFromUrl = searchParams.get('filiere') || ''
+  const offerFromUrl = searchParams.get('filiere') || searchParams.get('formation') || ''
   const { draft, setDraft, clearDraft } = useRegistrationDraftStore()
   const [step, setStep] = useState(draft.step ?? 0)
   const [submittedId, setSubmittedId] = useState<string | null>(null)
   const [programs, setPrograms] = useState<ProgramItem[]>([])
+  const [courses, setCourses] = useState<ShortCourseItem[]>([])
 
   useEffect(() => {
-    void getPrograms().then(setPrograms)
+    const unsubPrograms = listenPrograms(setPrograms)
+    const unsubCourses = listenShortCourses(setCourses)
+    return () => {
+      unsubPrograms()
+      unsubCourses()
+    }
   }, [])
 
   const {
@@ -73,7 +79,7 @@ export function PreinscriptionPage() {
       province: draft.province || '',
       telephone: draft.telephone || '',
       email: draft.email || '',
-      filiereId: draft.filiereId || filiereFromUrl || '',
+      filiereId: draft.filiereId || offerFromUrl || '',
       niveauEtudes: draft.niveauEtudes || '',
       ecoleProvenance: draft.ecoleProvenance || '',
       anneeAcademique: draft.anneeAcademique || '2026-2027',
@@ -83,10 +89,11 @@ export function PreinscriptionPage() {
   })
 
   useEffect(() => {
-    if (!filiereFromUrl || programs.length === 0) return
-    const exists = programs.some((p) => p.id === filiereFromUrl)
-    if (exists) setValue('filiereId', filiereFromUrl)
-  }, [filiereFromUrl, programs, setValue])
+    if (!offerFromUrl) return
+    const exists =
+      programs.some((p) => p.id === offerFromUrl) || courses.some((c) => c.id === offerFromUrl)
+    if (exists) setValue('filiereId', offerFromUrl)
+  }, [offerFromUrl, programs, courses, setValue])
 
   useEffect(() => {
     const sub = watch((values) => {
@@ -111,11 +118,18 @@ export function PreinscriptionPage() {
     setDraft({ step: prev })
   }
 
+  const selectedCourse = courses.find((c) => c.id === watch('filiereId'))
+  const selectedProgram = programs.find((p) => p.id === watch('filiereId'))
+  const selectedOffer = selectedCourse || selectedProgram
+  const offerLabel = selectedCourse ? 'Formation' : 'Filière'
+
   const onSubmit = async (values: FormValues) => {
-    const filiere = programs.find((p) => p.id === values.filiereId)
+    const course = courses.find((c) => c.id === values.filiereId)
+    const program = programs.find((p) => p.id === values.filiereId)
     const result = await submitRegistration({
       ...values,
-      filiereLabel: filiere?.title || values.filiereId,
+      filiereLabel: course?.title || program?.title || values.filiereId,
+      offerKind: course ? 'short_course' : 'filiere',
     })
     setSubmittedId(result.id)
     clearDraft()
@@ -230,16 +244,33 @@ export function PreinscriptionPage() {
 
           {step === 2 ? (
             <>
-              <FormField label="Filière choisie" required error={errors.filiereId?.message}>
+              <FormField
+                label="Filière ou formation courte"
+                required
+                error={errors.filiereId?.message}
+              >
                 <Select {...register('filiereId')} defaultValue="">
                   <option value="" disabled>
                     Sélectionner
                   </option>
-                  {programs.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
+                  {programs.length > 0 ? (
+                    <optgroup label="Filières académiques">
+                      {programs.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null}
+                  {courses.length > 0 ? (
+                    <optgroup label="Formations courtes ISSSI Academy">
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.title}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null}
                 </Select>
               </FormField>
               <FormField label="Niveau d’études" required error={errors.niveauEtudes?.message}>
@@ -250,6 +281,9 @@ export function PreinscriptionPage() {
                   <option value="Diplômé d'État">Diplômé d’État</option>
                   <option value="Graduat">Graduat</option>
                   <option value="Licence">Licence</option>
+                  <option value="Professionnel / Formation continue">
+                    Professionnel / Formation continue
+                  </option>
                   <option value="Autre">Autre</option>
                 </Select>
               </FormField>
@@ -287,8 +321,7 @@ export function PreinscriptionPage() {
                 <strong className="text-ink">Province :</strong> {values.province}
               </p>
               <p>
-                <strong className="text-ink">Filière :</strong>{' '}
-                {programs.find((p) => p.id === values.filiereId)?.title}
+                <strong className="text-ink">{offerLabel} :</strong> {selectedOffer?.title}
               </p>
               <p>
                 <strong className="text-ink">Année :</strong> {values.anneeAcademique}

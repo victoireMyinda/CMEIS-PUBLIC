@@ -28,6 +28,7 @@ const STATUS_PUBLISHED_COLLECTIONS = new Set([
   'galleryImages',
   'admissions',
   'paymentInfo',
+  'shortCourses',
 ])
 
 function ensureDb() {

@@ -50,8 +50,9 @@ service cloud.firestore {
 
     // Les règles ne filtrent pas les listes. Côté site public, chaque query
     // collection DOIT contraindre :
-    //   status == 'published'  → pages, news, galleries, galleryImages,
-    //                            documents, programs, admissions, paymentInfo
+//   status == 'published'  → pages, news, galleries, galleryImages,
+//                            documents, programs, admissions, paymentInfo,
+//                            shortCourses
     //   visible == true        → partners
     // Sinon Firestore refuse toute la lecture (permission-denied).
 
@@ -138,6 +139,16 @@ service cloud.firestore {
     match /programs/{id} {
       allow read: if isPublished() || isIsssi() || isSuper();
       allow write: if isIsssi();
+    }
+
+    match /shortCourses/{id} {
+      allow read: if isPublished() || isIsssi() || isSuper();
+      allow write: if isIsssi();
+    }
+
+    match /academyInfo/{id} {
+      allow read: if true;
+      allow write: if isIsssi() || isSuper();
     }
 
     match /admissions/{id} {

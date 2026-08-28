@@ -66,13 +66,13 @@ export function PageHero({
   return (
     <section className="relative overflow-hidden bg-brand-700 text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(232,184,74,0.25),transparent_45%),linear-gradient(160deg,#0b3d2e_0%,#083226_55%,#05261c_100%)]" />
-      <div className="container-app relative py-12 sm:py-16">
+      <div className="container-app relative py-12 sm:py-16 lg:py-20">
         {eyebrow ? (
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent-400">
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="max-w-3xl text-3xl font-semibold sm:text-4xl lg:text-5xl">
+        <h1 className="max-w-3xl text-3xl font-semibold sm:text-4xl lg:text-[2.75rem] lg:leading-tight">
           {title}
         </h1>
         {subtitle ? (

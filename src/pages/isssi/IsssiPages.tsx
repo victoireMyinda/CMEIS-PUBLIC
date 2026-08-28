@@ -5,16 +5,20 @@ import { ArrowRight, GraduationCap, Newspaper } from 'lucide-react'
 import { Seo } from '@/components/shared/Seo'
 import { CmsPage, CmsProse } from '@/components/shared/CmsPage'
 import { GallerySwipe } from '@/components/shared/GallerySwipe'
+import { HeroBanner, resolveBannerSlides } from '@/components/shared/HeroBanner'
 import { Spinner } from '@/components/ui/Feedback'
 import { Button } from '@/components/ui/Button'
 import { OptimizedImage } from '@/components/ui/OptimizedImage'
 import {
-  getHomepage,
   getPageBySlug,
   getPrograms,
+  getShortCourses,
   listenGallery,
+  listenHomepage,
   listenNews,
   listenPaymentInfo,
+  listenPrograms,
+  listenShortCourses,
 } from '@/services/contentService'
 import type {
   GalleryItem,
@@ -23,12 +27,14 @@ import type {
   PageContent,
   PaymentInfo,
   ProgramItem,
+  ShortCourseItem,
 } from '@/types'
 import { useSite } from '@/app/SiteProvider'
 import { resolvePresentationBlocks } from '@/utils/presentationBlocks'
 
 const quickNav = [
   { label: 'Filières', to: '/isssi/filieres' },
+  { label: 'Academy', to: '/isssi/formations-courtes' },
   { label: 'Admission', to: '/isssi/admission' },
   { label: 'Préinscription', to: '/isssi/preinscription' },
   { label: 'Frais', to: '/isssi/frais' },
@@ -119,6 +125,7 @@ export function IsssiHomePage() {
   const site = useSite()
   const reduceMotion = useReducedMotion()
   const [programs, setPrograms] = useState<ProgramItem[]>([])
+  const [shortCourses, setShortCourses] = useState<ShortCourseItem[]>([])
   const [gallery, setGallery] = useState<GalleryItem[]>([])
   const [home, setHome] = useState<HomepageConfig | null>(null)
   const [page, setPage] = useState<PageContent | null>(null)
@@ -130,17 +137,17 @@ export function IsssiHomePage() {
 
   useEffect(() => {
     void Promise.all([
-      getHomepage('isssi'),
       getPageBySlug('isssi'),
       getPageBySlug('isssi-vision-mission'),
       getPageBySlug('isssi-campus'),
       getPrograms(),
-    ]).then(([h, p, v, c, prog]) => {
-      setHome(h)
+      getShortCourses(),
+    ]).then(([p, v, c, prog, courses]) => {
       setPage(p)
       setVision(v)
       setCampus(c)
       setPrograms(prog)
+      setShortCourses(courses)
       setLoading(false)
     })
   }, [])
@@ -149,17 +156,23 @@ export function IsssiHomePage() {
     const unsubNews = listenNews('isssi', 3, setNews)
     const unsubGallery = listenGallery('isssi', (items) => setGallery(items.slice(0, 12)))
     const unsubPayment = listenPaymentInfo('isssi', setPayment)
+    const unsubHome = listenHomepage('isssi', setHome)
+    const unsubCourses = listenShortCourses(setShortCourses)
+    const unsubPrograms = listenPrograms(setPrograms)
     return () => {
       unsubNews()
       unsubGallery()
       unsubPayment()
+      unsubHome()
+      unsubCourses()
+      unsubPrograms()
     }
   }, [])
 
   const titlePrimary = home?.titlePrimary || site.isssi.name
   const titleSecondary = home?.titleSecondary || site.isssi.fullName
   const titleTertiary = home?.titleTertiary || home?.slogan || site.isssi.tagline
-  const banner = home?.bannerUrl
+  const bannerSlides = resolveBannerSlides(home)
   const presentation = useMemo(
     () =>
       resolvePresentationBlocks({
@@ -171,6 +184,7 @@ export function IsssiHomePage() {
     [page],
   )
   const featuredPrograms = programs.slice(0, 6)
+  const featuredShortCourses = shortCourses.slice(0, 6)
 
   return (
     <>
@@ -180,76 +194,54 @@ export function IsssiHomePage() {
         path="/isssi"
       />
 
-      {/* Bannière pleine largeur — image dominante, texte en bas */}
-      <section className="relative min-h-[78dvh] overflow-hidden bg-brand-900 text-white sm:min-h-[86dvh]">
-        {banner ? (
-          <motion.div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url('${banner}')` }}
-            initial={reduceMotion ? false : { scale: 1.06, opacity: 0.85 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-            role="img"
-            aria-label={`Bannière ${titlePrimary}`}
-          />
-        ) : (
-          <div className="absolute inset-0 bg-[linear-gradient(145deg,#05261c_0%,#0b3d2e_42%,#2f7f5e_78%,#c9a227_140%)]" />
-        )}
-        {/* Voile léger : image bien visible, lisibilité du texte */}
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-brand-900/92 via-brand-900/30 to-transparent"
-          aria-hidden
-        />
-        <div className="container-app relative flex min-h-[78dvh] flex-col justify-end pb-10 pt-28 sm:min-h-[86dvh] sm:pb-14 sm:pt-32">
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.06 }}
-            className="max-w-3xl"
-          >
-            <div className="mb-5 flex items-center gap-3">
-              <img
-                src={site.isssi.logoUrl}
-                alt=""
-                className="h-12 w-12 rounded-lg object-cover ring-1 ring-white/30 sm:h-14 sm:w-14"
-              />
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent-400 sm:text-[11px]">
-                  Institut académique
-                </p>
-                <p className="truncate text-xs text-white/70 sm:text-sm">CMEIS-DG3 · Kinshasa</p>
-              </div>
+      <HeroBanner slides={bannerSlides} align="end">
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.06 }}
+        >
+          <div className="mb-5 flex items-center gap-3">
+            <img
+              src={site.isssi.logoUrl}
+              alt=""
+              className="h-12 w-12 rounded-lg object-cover ring-1 ring-white/30 sm:h-14 sm:w-14"
+            />
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent-400 sm:text-[11px]">
+                Institut académique
+              </p>
+              <p className="truncate text-xs text-white/70 sm:text-sm">CMEIS-DG3 · Kinshasa</p>
             </div>
-            <p className="font-display text-[2.6rem] font-semibold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
-              {titlePrimary}
-            </p>
-            <h1 className="mt-3 max-w-2xl text-base font-medium leading-snug text-white/90 sm:mt-4 sm:text-xl">
-              {titleSecondary}
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75 sm:mt-4 sm:text-base">
-              {titleTertiary}
-            </p>
-            <div className="mt-7 grid grid-cols-1 gap-2.5 sm:mt-9 sm:flex sm:flex-row sm:gap-3">
-              <Link to="/isssi/preinscription" className="sm:flex-none">
-                <Button variant="accent" size="lg" fullWidth className="sm:w-auto">
-                  Préinscription
-                </Button>
-              </Link>
-              <Link to="/isssi/filieres" className="sm:flex-none">
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  fullWidth
-                  className="border-white/25 bg-white/10 text-white hover:bg-white/20 sm:w-auto"
-                >
-                  Voir les filières
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+          </div>
+          <p className="font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+            {titlePrimary}
+          </p>
+          <h1 className="mt-3 max-w-2xl text-base font-medium leading-snug text-white/90 sm:mt-4 sm:text-xl">
+            {titleSecondary}
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75 sm:mt-4 sm:text-base">
+            {titleTertiary}
+          </p>
+          <div className="mt-7 grid grid-cols-1 gap-2.5 sm:mt-9 sm:flex sm:flex-row sm:gap-3">
+            <Link to="/isssi/preinscription" className="sm:flex-none">
+              <Button variant="accent" size="lg" fullWidth className="sm:w-auto">
+                Préinscription
+              </Button>
+            </Link>
+            <Link to="/isssi/filieres" className="sm:flex-none">
+              <Button
+                variant="secondary"
+                size="lg"
+                fullWidth
+                className="border-white/25 bg-white/10 text-white hover:bg-white/20 sm:w-auto"
+              >
+                Voir les filières
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </motion.div>
+      </HeroBanner>
 
       {/* Sommaire — navigation verticale, sans scroll horizontal */}
       <section className="border-b border-brand-100 bg-white">
@@ -531,6 +523,65 @@ export function IsssiHomePage() {
                     </h3>
                     <p className="mt-1.5 line-clamp-2 text-sm text-muted">
                       {p.summary || p.description}
+                    </p>
+                    <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">
+                      <GraduationCap className="h-4 w-4" />
+                      Détails
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {featuredShortCourses.length > 0 ? (
+        <section className="scroll-mt-20 border-t border-brand-100 bg-[#f3f6f4] py-10 sm:py-16">
+          <div className="container-app">
+            <Reveal>
+              <div className="mb-5 flex items-end justify-between gap-3 sm:mb-7">
+                <div>
+                  <IsssiEyebrow>ISSSI Academy</IsssiEyebrow>
+                  <h2 className="font-display text-2xl font-semibold text-brand-900 sm:text-3xl">
+                    Formations courtes et certifiées
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
+                    Deux académies spécialisées : urgences et santé humanitaire, leadership
+                    communautaire et protection sociale en santé.
+                  </p>
+                </div>
+                <Link
+                  to="/isssi/formations-courtes"
+                  className="text-sm font-semibold text-brand-700"
+                >
+                  Tout voir
+                </Link>
+              </div>
+            </Reveal>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {featuredShortCourses.map((item) => (
+                <Link
+                  key={item.id}
+                  to={`/isssi/formations-courtes/${item.slug}`}
+                  className="flex flex-col overflow-hidden border border-brand-100 bg-white sm:hover:border-brand-300"
+                >
+                  <OptimizedImage
+                    src={item.coverImage || ''}
+                    alt={item.title}
+                    aspect="aspect-[16/10]"
+                  />
+                  <div className="flex flex-1 flex-col p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-brand-700">
+                      {[item.duration || 'Formation courte', item.tuition?.trim() || 'Sur demande']
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                    <h3 className="mt-1.5 font-display text-lg font-semibold text-brand-900">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1.5 line-clamp-2 text-sm text-muted">
+                      {item.summary || item.description}
                     </p>
                     <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">
                       <GraduationCap className="h-4 w-4" />

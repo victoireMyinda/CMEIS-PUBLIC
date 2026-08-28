@@ -13,9 +13,12 @@ export const siteConfig = {
     address: 'Kinshasa, République Démocratique du Congo',
   },
   social: {
-    facebook: 'https://facebook.com',
-    linkedin: 'https://linkedin.com',
-    youtube: 'https://youtube.com',
+    facebook: '',
+    instagram: '',
+    twitter: '',
+    youtube: '',
+    tiktok: '',
+    linkedin: '',
   },
   mapsEmbedUrl:
     import.meta.env.VITE_MAPS_EMBED_URL ||
@@ -32,9 +35,12 @@ export const siteConfig = {
       address: 'Kinshasa, République Démocratique du Congo',
     },
     social: {
-      facebook: 'https://facebook.com',
-      linkedin: 'https://linkedin.com',
-      youtube: 'https://youtube.com',
+      facebook: '',
+      instagram: '',
+      twitter: '',
+      youtube: '',
+      tiktok: '',
+      linkedin: '',
     },
     mapsEmbedUrl:
       import.meta.env.VITE_MAPS_EMBED_URL ||
@@ -78,6 +84,11 @@ export const isssiNav = [
     label: 'Filières et options',
     shortLabel: 'Filières',
     to: '/isssi/filieres',
+  },
+  {
+    label: 'Formations courtes et certifiées',
+    shortLabel: 'Academy',
+    to: '/isssi/formations-courtes',
   },
   {
     label: 'Conditions d’admission',

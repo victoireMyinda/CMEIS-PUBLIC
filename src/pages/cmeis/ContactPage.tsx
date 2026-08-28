@@ -9,6 +9,7 @@ import { FormField, Input, Textarea, Select } from '@/components/ui/Form'
 import { submitContact } from '@/services/contentService'
 import { useSite } from '@/app/SiteProvider'
 import type { PortalScope } from '@/types'
+import { SocialLinks, hasSocialLinks } from '@/components/shared/SocialLinks'
 
 const schema = z.object({
   name: z.string().min(2, 'Nom requis'),
@@ -93,6 +94,12 @@ export function ContactPage({
               <li>{portal.contact.email}</li>
               <li>{portal.contact.phone}</li>
             </ul>
+            {hasSocialLinks(portal.social) ? (
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-semibold text-ink">Réseaux sociaux</p>
+                <SocialLinks social={portal.social} tone="dark" />
+              </div>
+            ) : null}
           </div>
           <div className="overflow-hidden rounded-2xl border border-line bg-white">
             <iframe

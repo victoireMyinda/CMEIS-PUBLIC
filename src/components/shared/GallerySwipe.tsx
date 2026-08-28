@@ -390,7 +390,7 @@ function GalleryMediaCard({
             src={cover}
             alt={item.title}
             aspect="aspect-[4/3]"
-            fit={item.id.startsWith('local-asset-') ? 'contain' : 'cover'}
+            fit={item.album === 'Affiches' ? 'contain' : 'cover'}
             priority={priority}
           />
         </div>

@@ -1,23 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Search, X } from 'lucide-react'
 import { Seo } from '@/components/shared/Seo'
 import { PageHero, EmptyState, Spinner } from '@/components/ui/Feedback'
 import { Card, CardBody } from '@/components/ui/Card'
 import { OptimizedImage } from '@/components/ui/OptimizedImage'
 import { Button } from '@/components/ui/Button'
-import { getProgramBySlug, getPrograms } from '@/services/contentService'
+import { getProgramBySlug, listenPrograms } from '@/services/contentService'
 import type { ProgramItem } from '@/types'
 
 export function ProgramsListPage() {
   const [items, setItems] = useState<ProgramItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
-    void getPrograms().then((data) => {
+    return listenPrograms((data) => {
       setItems(data)
       setLoading(false)
     })
   }, [])
+
+  const matched = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((item) => item.title.toLowerCase().includes(q))
+  }, [items, query])
+  const searching = query.trim().length > 0
 
   return (
     <>
@@ -28,23 +37,51 @@ export function ProgramsListPage() {
         subtitle="Parcours académiques disponibles."
       />
       <section className="container-app py-8 sm:py-12">
+        <div className="relative mb-6 max-w-xl">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher une filière par son titre…"
+            aria-label="Rechercher une filière par son titre"
+            className="h-12 w-full rounded-2xl border border-line bg-white pl-11 pr-11 text-[15px] text-ink shadow-soft outline-none placeholder:text-muted/70 focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
+          />
+          {searching ? (
+            <button
+              type="button"
+              aria-label="Effacer la recherche"
+              onClick={() => setQuery('')}
+              className="absolute right-2.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted hover:bg-brand-50 hover:text-brand-800"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
         {loading ? (
           <div className="flex justify-center py-16">
             <Spinner />
           </div>
-        ) : items.length === 0 ? (
-          <EmptyState title="Aucune filière publiée" description="Les filières publiées depuis l’admin apparaîtront ici." />
+        ) : matched.length === 0 ? (
+          <EmptyState
+            title={searching ? 'Aucune filière trouvée' : 'Aucune filière publiée'}
+            description={
+              searching
+                ? 'Essayez un autre titre, ou effacez la recherche.'
+                : 'Les filières publiées depuis l’admin apparaîtront ici.'
+            }
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((p) => (
+            {matched.map((p) => (
               <Card key={p.id}>
                 <OptimizedImage src={p.coverImage || ''} alt={p.title} />
                 <CardBody>
                   <h3 className="font-display text-lg font-semibold">{p.title}</h3>
-                  <p className="mt-2 text-sm text-muted">{p.summary || p.description}</p>
+                  <p className="mt-2 line-clamp-3 text-sm text-muted">{p.summary || p.description}</p>
                   <p className="mt-3 text-xs font-medium text-brand-700">
                     {p.level} · {p.duration}
-                    {p.tuition ? ` · ${p.tuition}` : ''}
+                    {` · ${p.tuition?.trim() || 'Sur demande'}`}
                   </p>
                   <Link
                     to={`/isssi/filieres/${p.slug}`}
@@ -114,7 +151,11 @@ export function ProgramDetailPage() {
           <p className="mt-4 text-sm font-medium text-ink">
             Scolarité : <span className="text-brand-800">{item.tuition}</span>
           </p>
-        ) : null}
+        ) : (
+          <p className="mt-4 text-sm font-medium text-ink">
+            Scolarité : <span className="text-brand-800">Sur demande</span>
+          </p>
+        )}
         <div className="mt-6">
           <Link to={`/isssi/preinscription?filiere=${encodeURIComponent(item.id)}`}>
             <Button>Préinscription à cette filière</Button>

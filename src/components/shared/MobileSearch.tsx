@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
-import { getDocuments, getNews, getPrograms } from '@/services/contentService'
+import { getDocuments, getNews, getPrograms, getShortCourses } from '@/services/contentService'
 import { useUiStore } from '@/store'
 import { Button } from '@/components/ui/Button'
-import type { DocumentItem, NewsItem, ProgramItem } from '@/types'
+import type { DocumentItem, NewsItem, ProgramItem, ShortCourseItem } from '@/types'
 
 export function MobileSearch() {
   const { searchOpen, setSearchOpen } = useUiStore()
@@ -12,14 +12,16 @@ export function MobileSearch() {
   const [news, setNews] = useState<NewsItem[]>([])
   const [programs, setPrograms] = useState<ProgramItem[]>([])
   const [docs, setDocs] = useState<DocumentItem[]>([])
+  const [courses, setCourses] = useState<ShortCourseItem[]>([])
 
   useEffect(() => {
     if (!searchOpen) return
-    void Promise.all([getNews(undefined, 30), getPrograms(), getDocuments()]).then(
-      ([n, p, d]) => {
+    void Promise.all([getNews(undefined, 30), getPrograms(), getDocuments(), getShortCourses()]).then(
+      ([n, p, d, c]) => {
         setNews(n)
         setPrograms(p)
         setDocs(d)
+        setCourses(c)
       },
     )
   }, [searchOpen])
@@ -44,6 +46,14 @@ export function MobileSearch() {
           to: `/isssi/filieres/${p.slug}`,
           type: 'Filière',
         })),
+      ...courses
+        .filter((item) => item.title.toLowerCase().includes(query))
+        .map((item) => ({
+          id: item.id,
+          label: item.title,
+          to: `/isssi/formations-courtes/${item.slug}`,
+          type: 'Formation courte',
+        })),
       ...docs
         .filter((d) => d.title.toLowerCase().includes(query))
         .map((d) => ({
@@ -53,7 +63,7 @@ export function MobileSearch() {
           type: 'Document',
         })),
     ].slice(0, 8)
-  }, [q, news, programs, docs])
+  }, [q, news, programs, courses, docs])
 
   if (!searchOpen) return null
 

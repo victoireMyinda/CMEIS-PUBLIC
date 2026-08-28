@@ -24,10 +24,11 @@ export type PortalRuntime = {
   }
   social: {
     facebook?: string
-    linkedin?: string
-    youtube?: string
-    twitter?: string
     instagram?: string
+    twitter?: string
+    youtube?: string
+    tiktok?: string
+    linkedin?: string
   }
   mapsEmbedUrl: string
   seoDefaultTitle?: string
@@ -96,10 +97,11 @@ function mergePortal(
     },
     social: {
       facebook: settings.social?.facebook || fallback.social.facebook,
-      linkedin: settings.social?.linkedin || fallback.social.linkedin,
+      instagram: settings.social?.instagram || fallback.social.instagram,
+      twitter: settings.social?.twitter || fallback.social.twitter,
       youtube: settings.social?.youtube || fallback.social.youtube,
-      twitter: settings.social?.twitter,
-      instagram: settings.social?.instagram,
+      tiktok: settings.social?.tiktok || fallback.social.tiktok,
+      linkedin: settings.social?.linkedin || fallback.social.linkedin,
     },
     mapsEmbedUrl: settings.mapsEmbedUrl || fallback.mapsEmbedUrl,
     seoDefaultTitle: settings.seoDefaultTitle || fallback.seoDefaultTitle,

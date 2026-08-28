@@ -49,6 +49,8 @@ export interface HomepageConfig extends BaseDoc {
   titleSecondary?: string
   titleTertiary?: string
   bannerUrl?: string
+  /** Jusqu’à 3 photos de bannière en défilement */
+  bannerUrls?: string[]
   /** @deprecated Kept for legacy docs */
   blocks?: HomepageBlock[]
 }
@@ -70,6 +72,7 @@ export interface SiteSettings extends BaseDoc {
     linkedin?: string
     youtube?: string
     instagram?: string
+    tiktok?: string
   }
   mapsEmbedUrl?: string
   seoDefaultTitle?: string
@@ -138,6 +141,36 @@ export interface ProgramItem extends BaseDoc {
   order: number
 }
 
+export type AcademyId = 'health-emergency' | 'community-leadership'
+
+export interface ShortCourseItem extends BaseDoc {
+  title: string
+  slug: string
+  academy: AcademyId
+  summary?: string
+  description: string
+  duration?: string
+  certification?: string
+  audience?: string
+  coverImage?: string
+  tuition?: string
+  scope?: 'isssi'
+  status: ContentStatus
+  order: number
+}
+
+export interface AcademyInfo extends BaseDoc {
+  umbrellaName: string
+  umbrellaTagline: string
+  intro: string
+  healthName: string
+  healthSubtitle: string
+  healthAudience: string
+  communityName: string
+  communitySubtitle: string
+  communityAudience: string
+}
+
 export interface AdmissionInfo extends BaseDoc {
   academicYear: string
   title: string
@@ -166,6 +199,7 @@ export interface Registration extends BaseDoc {
   email: string
   filiereId: string
   filiereLabel: string
+  offerKind?: 'filiere' | 'short_course'
   niveauEtudes: string
   ecoleProvenance: string
   anneeAcademique: string
